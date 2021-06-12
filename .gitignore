@@ -1,0 +1,4 @@
+.json
+.json.gz
+.env
+__pycache__
