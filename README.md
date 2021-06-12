@@ -47,6 +47,11 @@ Then in python, run:
 TW.full_convo_collection_from_file(user_id.txt, './outdir', max_results=10)
 ```
 
+3. Reply collection, or get missing tweets that are in a convo or referenced in a convo
+```
+TW.get_replies_from_tweet_gzip_file('infilename.json.gz', './outdir')
+```
+
 ### Additional Utilities 
 1. Convert from V2 to V1 format
 As a standalone on console: 
@@ -61,6 +66,5 @@ TW.convert_json_v2_to_v1('test_convert.json.gz')
 ```
 
 TODO:
-- reply trees
 - streaming 
 - historical collection

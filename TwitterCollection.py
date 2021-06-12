@@ -4,6 +4,7 @@ import file_utils
 import api_utils
 import response_status_code
 import convert_v2_to_v1
+import crawler_utils
 
 class TwitterCollection():
     def __init__(self, BEARER_TOKEN=None):
@@ -38,8 +39,74 @@ class TwitterCollection():
 
         self.__get_full_convo(convo_ids, final_result_dir, max_results)
     
-    def get_replies_from_tweet_json_file(self, infilename):
-        pass
+    def get_replies_from_tweet_gzip_file(self, infilename, outdir):
+        final_result_dir = file_utils.make_results_dir(outdir)
+        self.__get_replies(infilename, final_result_dir)
+
+    def __get_replies(self, gzip_filename, final_result_dir):
+        parameters = {}
+        parameters['expansions'] = ['author_id', 'entities.mentions.username',
+                                    'referenced_tweets.id', 'referenced_tweets.id.author_id']
+        parameters['place.fields'] = ['contained_within', 'country', 'country_code', 'full_name',
+                                    'geo', 'id', 'name', 'place_type']
+        parameters['tweet.fields'] = ['author_id', 'context_annotations', 'conversation_id',
+                                    'created_at', 'entities', 'geo', 'id', 'in_reply_to_user_id',
+                                    'lang', 'referenced_tweets', 'text']
+        parameters['user.fields'] = ['created_at', 'description', 'entities', 'id', 'location',
+                                    'name', 'public_metrics', 'url', 'username', 'verified']
+
+        tweetsWithData, missingTweets = crawler_utils.findMissingTweets(gzip_filename)
+        error_tweet_ids = []
+
+        seen_users, seen_tweets = set(), set()
+        round = 0
+        while len(missingTweets) > 0:
+            missingTweets = list(missingTweets)
+            newlyReferenced = set()
+
+            for i in range(0, len(missingTweets), 100):
+                tweetids = missingTweets[i: i+100]
+                url = api_utils.create_tweet_url(tweetids, params=parameters)
+                response = api_utils.connect_to_endpoint(url, self.headers)
+
+                if response.status_code == response_status_code.SUCCESS:
+                    response_json = response.json()
+
+                    if 'error' in response_json:
+                        for error_tweet in response_json['error']:
+                            error_tweet_id = error_tweet['value']
+                            error_type = error_tweet['title']
+                            error_tweet_ids.append(f'{error_tweet_id},{error_type}\n')
+
+                    for new_tweet in response_json['data']:
+                        tweet_id = new_tweet['id']
+                        if tweet_id not in seen_tweets:
+                            seen_tweets.add(tweet_id)
+                        if ('referenced_tweets' in new_tweet) and (new_tweet['referenced_tweets'] is not None):
+                            for x in new_tweet['referenced_tweets']:
+                                newlyReferenced.add(x['id'])
+                    
+                    for new_user in response_json['includes']['users']:
+                        user_id = new_user['id']
+                        if user_id not in seen_users:
+                            seen_users.add(user_id)
+
+                    output_json = {}
+                    output_json['data'] = response_json['data']
+                    output_json['includes'] = response_json['includes']               
+
+                    gzip_filename_out = gzip_filename.replace('.json.gz', '')
+                    gzip_filename_out = gzip_filename_out.replace('.json.gzip', '')
+                    gzip_filename_out = gzip_filename_out.replace('.json', '')
+                    file_utils.write_response_json_to_gzip(response_json, os.path.join(final_result_dir, f'replies_{gzip_filename_out}_{round}.json.gz'))
+
+            round += 1
+
+            tweetsWithData = tweetsWithData.union(set(missingTweets))
+            missingTweets = newlyReferenced.difference(tweetsWithData)
+
+        file_utils.write_array_to_file(error_tweet_ids, final_result_dir, label_string='error tweets')
+
 
     def __get_full_convo(self, convo_ids, final_result_dir, max_results=5):
         parameters = {}
@@ -76,7 +143,7 @@ class TwitterCollection():
                     keepCollecting = False 
 
                 else:
-                    file_utils.write_response_json_to_gzip(response_json, os.path.join(final_result_dir, f'convo_{convo}_{round}.json.gz'))
+                    file_utils.write_response_json_to_gzip(response_json, os.path.join(final_result_dir, f'convo_{convo}_{round}_.json.gz'))
 
                     round += 1
                     total_tweets += len(response_json['data'])

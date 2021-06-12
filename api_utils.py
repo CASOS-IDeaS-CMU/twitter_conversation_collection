@@ -32,7 +32,6 @@ def create_convo_url(cid, params=None, next_token=None, max_results=100):
         url = attach_params(url, params)
     return url
 
-
 def create_tweet_url(tids, params=None):
     if not isinstance(tids, list):
         tids = [tids]
@@ -48,7 +47,6 @@ def create_timeline_id_url(uid, params=None, max_results=10):
     if params:
         url = attach_params(url, params)
     return url
-
 
 def check_for_error(response_json):
     if 'errors' in response_json: 
