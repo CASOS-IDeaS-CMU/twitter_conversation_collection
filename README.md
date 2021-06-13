@@ -56,7 +56,8 @@ TW.get_replies_from_tweet_gzip_file('infilename.json.gz', './outdir')
 1. Convert from V2 to V1 format
 As a standalone on console: 
 ```
-python convert_v2_to_v1_format_upgrade.py <json/gzip output> "<INPUT GZIP>" "<OUTPUT GZIP/JSON>"
+python convert_v2_to_v1_standalone.py <"json"/"gz" output type> "<INPUT1 JSON/JSON.GZ>" "<INPUT2 JSON/JSON.GZ>" ...
+For example: python convert_v2_to_v1_standalone.py json "test_file1.json.gz" "test_file2.json" "test_file3.json.gz"
 ```
 
 As part of a module
