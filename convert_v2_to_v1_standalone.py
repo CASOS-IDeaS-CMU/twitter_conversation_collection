@@ -5,26 +5,33 @@ import datetime as dt
 from pathlib import Path
 
 '''
-python convert_v2_to_v1_format_upgrade.py json "../Temp Testing/test_convert(1).json.gz" "../Temp Testing/timeline_164422451_20210611_173026.json"
+python convert_v2_to_v1_standalone.py output_file_type input_file1 input_file2 ....
+Arguments:
+    - output_file_type: "json" or "gz"
+    - input_files: any mix of json and gz files in v2 format, extension must be .json or .json.gz
+Outputs:
+    - An output file of the specified output_file_type will be created for each input file, with "v_1" appended
+      to the input file name (before the .json or .json.gz), containing the input file's tweets in
+      v1 format.
+example: python convert_v2_to_v1_standalone.py json "test_file1.json.gz" "test_file2.json" "test_file3.json.gz"
 '''
 
-def write_to_file_gzip(filename, data_list):
-    print(filename)
+def write_to_file_gz(filename, data_list):
     print("    Writing " + str(len(data_list)) + " tweets to file: " + filename)
-    json_str = json.dumps(data_list[0], sort_keys=True) + "\n"      # JSON
-    for tweet in data_list[1:]:
+    json_str = ""
+    for tweet in data_list:
         json_str += json.dumps(tweet, sort_keys=True) + "\n" 
-    json_bytes = json_str.encode('utf-8')            # UTF-8
+    json_bytes = json_str.encode('utf-8')
 
-    with gzip.open(filename, 'w') as fout:       # gzip
+    with gzip.open(filename, 'w') as fout:
         fout.write(json_bytes)         
 
 
 def write_to_file_json(filename, data_list):
     print("    Writing " + str(len(data_list)) + " tweets to file: " + filename)
     with open(filename, 'w') as outfile:
-        for row in data_list:
-            print(json.dumps(row, sort_keys=True), file=outfile)
+        for tweet in data_list:
+            print(json.dumps(tweet, sort_keys=True), file=outfile)
 
 
 def reformat_entities(v2_tweet):
@@ -104,38 +111,35 @@ def reformat_tweet(v2_tweet, referenced_tweets, authors_lookup):
                     tweet['quoted_status']['user'] = authors_lookup[tweet_lookup['author_id']]
                 except:
                     print("Couldn't find quoted tweet")  
-
     return tweet
 
 
 #Read in arguments
 if(len(sys.argv) < 3):
-    raise ValueError('Must enter output file format (json/gzip) and at least one file to convert.')
+    raise ValueError('Please enter output file format (json/gz) and at least one file to convert.')
 file_format = sys.argv[1]
 if(file_format not in ['json', 'gz']):
-    raise ValueError('Output file format must be json or gzip')
+    raise ValueError('Output file format must be "json" or "gz"')
 files_to_convert = sys.argv[2:]
 
-file_counter = 0
-
 #Convert each file
-for input_file in files_to_convert:
+for file_num, input_file in enumerate(files_to_convert):
     converted_list = []
     referenced_tweets = {}
     authors_lookup = {}
 
     #Read in the v2 data
     input_data = []
-    print("File " + str(file_counter) + ":")
+    print("File " + str(file_num) + ":")
     print("    Reading in: " + input_file)
-    if(input_file[-2:] == 'gz'):
+    if(input_file[-8:] == '.json.gz'):
         for line in gzip.open(input_file, 'r'): input_data.append(json.loads(line))
         full_dict = input_data[0]
-    elif(input_file[-4:] == 'json'):
+    elif(input_file[-5:] == '.json'):
         with open(input_file, "r", encoding='utf-8') as f:
             full_dict = json.loads(f.read())
     else:
-        raise ValueError('Cannot convert this file type - only json and gzip.')
+        raise ValueError('Cannot convert this file type, file name must end in ".json" or  ".json.gz".')
 
     #Get referenced tweets info and convert date and entities to v1 format
     for referenced_tweet in full_dict['includes']['tweets']:
@@ -164,12 +168,15 @@ for input_file in files_to_convert:
 
     print("    Total posts in file: " + str(total_posts_in_file)) 
 
+    #Output the converted tweets to file of specified type 
     base_filename = input_file
-    if(base_filename[-3:] == '.gz'): base_filename = base_filename[:-3]
-    if(base_filename[-5:] == '.json'): base_filename = base_filename[:-5]
-    if(file_format == 'gzip'):
-        write_to_file_gzip(base_filename + '_v1.json', converted_list)
+    if(base_filename[-8:] == '.json.gz'): base_filename = base_filename[:-8]
+    elif(base_filename[-5:] == '.json'): base_filename = base_filename[:-5]
+    else:
+        #already checked above, but just in case
+        raise ValueError('Cannot convert this file type, file name must end in ".json" or  ".json.gz".')
+    
+    if(file_format == 'gz'):
+        write_to_file_gz(base_filename + '_v1.json.gz', converted_list)
     else:
         write_to_file_json(base_filename + '_v1.json', converted_list)
-
-    file_counter += 1
