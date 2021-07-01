@@ -6,7 +6,7 @@ import urllib
 
 def connect_to_endpoint(url, headers):
     response = requests.request("GET", url, headers=headers)
-    # 429 is the rate-limit code
+    #429 is the rate-limit code
     if response.status_code == response_status_code.RATE_LIMIT:
         reset_time = datetime.datetime.fromtimestamp(int(response.headers['x-rate-limit-reset']))
         now = datetime.datetime.now()
@@ -17,6 +17,10 @@ def connect_to_endpoint(url, headers):
             time.sleep(time2sleep)
             print('woke up!')
         response = connect_to_endpoint(url, headers)
+    return response
+
+def connect_to_endpoint_stream(url, headers):
+    response = requests.request("GET", url, headers=headers, stream=True)
     return response
 
 def attach_params(url, params):
@@ -51,6 +55,12 @@ def create_timeline_id_url(uid, params=None, max_results=10):
 
 def create_stream_url(search_term, params):
     pass
+
+def sampled_stream_url(params):
+    url = "https://api.twitter.com/2/tweets/sample/stream?"
+    if params:
+        url = attach_params(url, params)
+    return url
 
 #https://api.twitter.com/2/tweets/search/stream
 

@@ -76,6 +76,20 @@ end_time='2020-10-30T23:59:59Z'
 TW.all_search_tweets('#blacklivesmatter #BLM', outdir='./outdir', start_time=start_time, end_time=end_time, max_results=100)
 ```
 
+6. Sampled stream
+In which you just get 1% of Twitter's conversation and is not filtered. It goes on forever until you stop it by ctrl+C or killing the terminal.
+
+```
+TW.sampled_stream(outdir='./sampled_outdir')
+```
+
+Note that the response is different than the usual, it is one tweet per line. [TODO: write conversion scripts to make things uniform]
+```
+Sample response
+{"data":{"id":"1410664522327621636","text":"RT @AAairty: น้องเล่อเหมือนจะแกะแผลตรงแขน จีซองคือลอคมือไว้แน่นมาก ฮืออออ  https://t.co/LrWUynXFWn"}}
+{"data":{"id":"1410664522344398848","text":"RT @vindib_: the lack of oversight on public spending is much worse than the last time around thanks to the pandemic, but we need to be act…"}}
+```
+
 ### Additional Utilities 
 1. Convert from V2 to V1 format
 As a standalone on console: 
@@ -91,4 +105,5 @@ TW.convert_json_v2_to_v1('test_convert.json.gz')
 
 TODO:
 - streaming 
-- historical collection
+- get user information
+- get user following

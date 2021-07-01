@@ -1,4 +1,6 @@
 import os
+import time
+import json
 
 import file_utils
 import api_utils
@@ -46,6 +48,10 @@ class TwitterCollection():
     def recent_search_tweets(self, query, outdir='./outdir', max_results=100):
         final_result_dir = file_utils.make_results_dir(outdir)
         self.__recent_search_tweets(query, final_result_dir, max_results)
+
+    def sampled_stream(self, outdir='./outdir'):
+        final_result_dir = file_utils.make_results_dir(outdir)
+        self.__sampled_stream(final_result_dir)
 
     def all_search_tweets(self, query, outdir='./outdir', start_time=None, end_time=None, max_results=100):
         final_result_dir = file_utils.make_results_dir(outdir)
@@ -212,12 +218,7 @@ class TwitterCollection():
             if search_type == 'recent_search':
                 url = api_utils.create_search_url(query, params=parameters, next_token=next_token)
             elif search_type == 'all_search':
-                if start_time is not None:
-                    parameters['start_time'] = [start_time]
-                if end_time is not None:
-                    parameters['end_time'] = [end_time]
-
-                url = api_utils.create_all_search_url(query, params=parameters, next_token=next_token)
+                url = api_utils.create_all_search_url(query, start_time, end_time, params=parameters, next_token=next_token)
 
             response = api_utils.connect_to_endpoint(url, self.headers)
 
@@ -240,6 +241,48 @@ class TwitterCollection():
                         keepCollecting = False 
             else:
                 print(f'Twitter API Error: {response.status_code}')
+
+    def __sampled_stream(self, final_result_dir):
+        print('Sampling stream...')
+
+        parameters = {}
+        parameters['expansions'] = ['author_id', 'referenced_tweets.id', 'in_reply_to_user_id', 'geo.place_id', 'entities.mentions.username', 'referenced_tweets.id.author_id','attachments.media_keys']
+
+        parameters['place.fields'] = ['contained_within', 'country', 'country_code', 'full_name','geo', 'id', 'name', 'place_type']
+
+        parameters['tweet.fields'] = ['attachments','author_id','context_annotations', 'conversation_id','created_at','entities','geo', 'id','in_reply_to_user_id','lang', 'possibly_sensitive', 'public_metrics', 'referenced_tweets','reply_settings','source', 'text', 'withheld']
+
+        parameters['user.fields'] = ['created_at', 'description', 'entities', 'id',   'location', 'name', 'public_metrics', 'url', 'username', 'verified', 'profile_image_url']
+
+        parameters['media.fields'] = ['duration_ms', 'height', 'media_key', 'preview_image_url', 'public_metrics', 'type', 'url', 'width']
+
+        total_tweets = 0
+        round = 0
+        keepCollecting = True
+
+        while keepCollecting: 
+            url = api_utils.sampled_stream_url(parameters)
+
+            response = api_utils.connect_to_endpoint_stream(url, self.headers)
+
+            if response.status_code == response_status_code.SUCCESS:
+
+                total_json = []
+                for response_line in response.iter_lines():
+                    response_line_json = json.loads(response_line)
+                    total_json.append(response_line_json)
+                    outfilename = os.path.join(final_result_dir, f'stream.json.gz')
+                    file_utils.write_response_arr_to_gzip(total_json, outfilename)
+
+                    round += 1
+                    total_tweets += len(total_json)
+                    print(f'Collected {total_tweets} tweets')
+                    time.sleep(5)
+
+            else:
+                print(f'Twitter API Error: {response.status_code}, {response.text}')
+                keepCollecting = False
+
 
     def convert_gzip_v2_to_v1(self, gzip_filename):
         if not gzip_filename.endswith('.gz'):

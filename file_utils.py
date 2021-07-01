@@ -42,7 +42,15 @@ def write_response_json_to_gzip(response_json, outfilename):
         line = json.dumps(response_json)
         f.write(line.encode())
     f.close()
+    return 
 
+def write_response_arr_to_gzip(response_array, outfilename):
+    with gzip.open(outfilename, 'wb') as f:
+        print('response array ', len(response_array))
+        for a in response_array:
+            line = json.dumps(a)
+            f.write(line.encode())
+    f.close()
     return 
 
 def read_gzip_json_file(gzipfilename):
