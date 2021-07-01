@@ -1,6 +1,8 @@
 # twitter_conversation_collection
 Repository for collecting Twitter conversations using the V2 API
 
+This is tested in Python 3.9
+
 ### Initializing
 ```
 from TwitterCollection import TwitterCollection

@@ -2,6 +2,7 @@ import requests
 import datetime
 import time
 import response_status_code
+import urllib
 
 def connect_to_endpoint(url, headers):
     response = requests.request("GET", url, headers=headers)
@@ -48,15 +49,34 @@ def create_timeline_id_url(uid, params=None, max_results=10):
         url = attach_params(url, params)
     return url
 
+def create_stream_url(search_term, params):
+    pass
+
+#https://api.twitter.com/2/tweets/search/stream
+
+def create_search_url(search_query, params=None, next_token=None, max_results=100):
+    if max_results > 100:
+        max_results = 100
+        print('Max results by Twitter API can only be 100')
+    query = urllib.parse.quote(search_query)
+    url = f"https://api.twitter.com/2/tweets/search/recent?query={query}&max_results={max_results}"
+    if next_token:
+        url += f"&next_token={next_token}"
+    if params:
+        url = attach_params(url, params)
+    return url
+
 def check_for_error(response_json):
     if 'errors' in response_json: 
         try:
             error_type = response_json['errors'][0]['type']
+            error_message = response_json['errors'][0]['message']
         except:
             response_json['type']
+            error_message = response_json['message']
         if error_type == response_status_code.INVALID_REQUEST:
-            return response_status_code.INTERNAL_INVALID_REQUEST
+            return response_status_code.INTERNAL_INVALID_REQUEST, error_message
         elif error_type == response_status_code.NOT_FOUND_ERROR:
-            return response_status_code.INTERNAL_NOT_FOUND
+            return response_status_code.INTERNAL_NOT_FOUND, error_message
     else:
         return response_status_code.INTERNAL_OK
