@@ -49,13 +49,19 @@ class TwitterCollection():
         final_result_dir = file_utils.make_results_dir(outdir)
         self.__recent_search_tweets(query, final_result_dir, max_results)
 
+    def all_search_tweets(self, query, outdir='./outdir', start_time=None, end_time=None, max_results=100):
+        final_result_dir = file_utils.make_results_dir(outdir)
+        self.__all_search_tweets(query, final_result_dir, start_time, end_time, max_results)
+
     def sampled_stream(self, outdir='./outdir'):
         final_result_dir = file_utils.make_results_dir(outdir)
         self.__sampled_stream(final_result_dir)
 
-    def all_search_tweets(self, query, outdir='./outdir', start_time=None, end_time=None, max_results=100):
+    def filtered_stream(self, query, outdir='./outdir'):
+        query_array = query.split(' ')
+        query_array_joined = ' OR '.join(query_array)
         final_result_dir = file_utils.make_results_dir(outdir)
-        self.__all_search_tweets(query, final_result_dir, start_time, end_time, max_results)
+        self.__filtered_stream(query_array_joined, final_result_dir)
 
     def __get_replies(self, gzip_filename, final_result_dir):
         parameters = {}
@@ -269,15 +275,65 @@ class TwitterCollection():
 
                 total_json = []
                 for response_line in response.iter_lines():
-                    response_line_json = json.loads(response_line)
-                    total_json.append(response_line_json)
-                    outfilename = os.path.join(final_result_dir, f'stream.json.gz')
-                    file_utils.write_response_arr_to_gzip(total_json, outfilename)
+                    try:
+                        response_line_json = json.loads(response_line)
+                        total_json.append(response_line_json)
+                    except:
+                        pass
 
-                    round += 1
-                    total_tweets += len(total_json)
-                    print(f'Collected {total_tweets} tweets')
-                    time.sleep(5)
+                outfilename = os.path.join(final_result_dir, f'stream_{round}.json.gz')
+                file_utils.write_response_arr_to_gzip(total_json, outfilename)
+
+                round += 1
+                total_tweets += len(total_json)
+                print(f'Collected {total_tweets} tweets')
+                time.sleep(5)
+
+            else:
+                print(f'Twitter API Error: {response.status_code}, {response.text}')
+                keepCollecting = False
+
+    def __filtered_stream(self, query_array_joined, final_result_dir):
+        api_utils.clear_and_set_rules(self.headers, query_array_joined)
+
+        print('Getting filtered stream...')
+
+        parameters = {}
+        parameters['expansions'] = ['author_id', 'referenced_tweets.id', 'in_reply_to_user_id', 'geo.place_id', 'entities.mentions.username', 'referenced_tweets.id.author_id','attachments.media_keys']
+
+        parameters['place.fields'] = ['contained_within', 'country', 'country_code', 'full_name','geo', 'id', 'name', 'place_type']
+
+        parameters['tweet.fields'] = ['attachments','author_id','context_annotations', 'conversation_id','created_at','entities','geo', 'id','in_reply_to_user_id','lang', 'possibly_sensitive', 'public_metrics', 'referenced_tweets','reply_settings','source', 'text', 'withheld']
+
+        parameters['user.fields'] = ['created_at', 'description', 'entities', 'id',   'location', 'name', 'public_metrics', 'url', 'username', 'verified', 'profile_image_url']
+
+        parameters['media.fields'] = ['duration_ms', 'height', 'media_key', 'preview_image_url', 'public_metrics', 'type', 'url', 'width']
+
+        total_tweets = 0
+        round = 0
+        keepCollecting = True
+
+        while keepCollecting: 
+            url = api_utils.filtered_stream_url(parameters)
+
+            response = api_utils.connect_to_endpoint_stream(url, self.headers)
+
+            if response.status_code == response_status_code.SUCCESS:
+                total_json = []
+                for response_line in response.iter_lines():
+                    try:
+                        response_line_json = json.loads(response_line)
+                        total_json.append(response_line_json)
+                    except:
+                        pass
+                query_truncated = query_array_joined[10:]
+                outfilename = os.path.join(final_result_dir, f'stream_{query_truncated}_{round}.json.gz')
+                file_utils.write_response_arr_to_gzip(total_json, outfilename)
+
+                round += 1
+                total_tweets += len(total_json)
+                print(f'Collected {total_tweets} tweets')
+                time.sleep(5)
 
             else:
                 print(f'Twitter API Error: {response.status_code}, {response.text}')

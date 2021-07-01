@@ -90,6 +90,15 @@ Sample response
 {"data":{"id":"1410664522344398848","text":"RT @vindib_: the lack of oversight on public spending is much worse than the last time around thanks to the pandemic, but we need to be act…"}}
 ```
 
+7. Filtered Stream
+In which you get streaming data based on certain parameters, for now it is just hashtags.
+
+To add a list of hashtags, separate them by space
+
+```
+TW.filtered_stream('#Blacklivesmatters #BLM', outdir='./filtered_stream')
+```
+
 ### Additional Utilities 
 1. Convert from V2 to V1 format
 As a standalone on console: 
@@ -105,6 +114,6 @@ TW.convert_json_v2_to_v1('test_convert.json.gz')
 ```
 
 TODO:
-- streaming 
+- streaming add more parameters
 - get user information
 - get user following

@@ -53,8 +53,61 @@ def create_timeline_id_url(uid, params=None, max_results=10):
         url = attach_params(url, params)
     return url
 
-def create_stream_url(search_term, params):
-    pass
+def get_rules(headers):
+    response = requests.get( "https://api.twitter.com/2/tweets/search/stream/rules", headers=headers)
+    if response.status_code != response_status_code.SUCCESS:
+        raise Exception(
+            "Cannot get rules (HTTP {}): {}".format(response.status_code, response.text)
+        )
+    print('Got last rules')
+    return response.json()
+
+def delete_all_rules(headers, rules):
+    if rules is None or "data" not in rules:
+        return None
+
+    ids = list(map(lambda rule: rule["id"], rules["data"]))
+    payload = {"delete": {"ids": ids}}
+    response = requests.post(
+        "https://api.twitter.com/2/tweets/search/stream/rules",
+        headers=headers,
+        json=payload
+    )
+    if response.status_code != response_status_code.SUCCESS:
+        raise Exception(
+            "Cannot delete rules (HTTP {}): {}".format(
+                response.status_code, response.text
+            )
+        )
+    print('Deleted Rules')
+
+def set_rules(headers, query_rule_string):
+    rules = [
+        {"value": query_rule_string, "tag": query_rule_string},
+    ]
+    payload = {"add": rules}
+    response = requests.post(
+        "https://api.twitter.com/2/tweets/search/stream/rules",
+        headers=headers,
+        json=payload,
+    )
+    if response.status_code != response_status_code.CREATION_SUCCESS:
+        raise Exception(
+            "Cannot add rules (HTTP {}): {}".format(response.status_code, response.text)
+        )
+    print(f'New rules set: {rules}')
+
+def clear_and_set_rules(headers, query_rule_string):
+    rules = get_rules(headers)
+    delete_all_rules(headers, rules)
+    set_rules(headers, query_rule_string)
+    return
+
+def filtered_stream_url(params):
+    url = "https://api.twitter.com/2/tweets/search/stream?"
+    if params:
+        url = attach_params(url, params)
+    return url
 
 def sampled_stream_url(params):
     url = "https://api.twitter.com/2/tweets/sample/stream?"
