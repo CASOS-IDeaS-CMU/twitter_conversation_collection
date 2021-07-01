@@ -66,17 +66,34 @@ def create_search_url(search_query, params=None, next_token=None, max_results=10
         url = attach_params(url, params)
     return url
 
+def create_all_search_url(search_query, start_time=None, end_time=None, params=None, next_token=None, max_results=100):
+    query = urllib.parse.quote(search_query)
+    url = f"https://api.twitter.com/2/tweets/search/all?query={query}&max_results={max_results}"
+    if next_token:
+        url += f"&next_token={next_token}"
+    if params:
+        url = attach_params(url, params)
+    if start_time:
+        url += f"&start_time={start_time}"
+    if end_time:
+        url += f"&end_time={end_time}"
+    return url    
+
 def check_for_error(response_json):
     if 'errors' in response_json: 
         try:
             error_type = response_json['errors'][0]['type']
             error_message = response_json['errors'][0]['message']
         except:
-            response_json['type']
+            error_type = response_json['type']
             error_message = response_json['message']
+
+        print('ERROR TYPE, ', error_type)
+
         if error_type == response_status_code.INVALID_REQUEST:
+            print('error!!')
             return response_status_code.INTERNAL_INVALID_REQUEST, error_message
         elif error_type == response_status_code.NOT_FOUND_ERROR:
             return response_status_code.INTERNAL_NOT_FOUND, error_message
     else:
-        return response_status_code.INTERNAL_OK
+        return response_status_code.INTERNAL_OK, ''

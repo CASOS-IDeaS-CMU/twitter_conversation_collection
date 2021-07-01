@@ -54,6 +54,28 @@ TW.full_convo_collection_from_file(user_id.txt, './outdir', max_results=10)
 TW.get_replies_from_tweet_gzip_file('infilename.json.gz', './outdir')
 ```
 
+4. Recent search, back 7 days, max 100 results
+```
+TW.recent_search_tweets('#blacklivesmatter #BLM', outdir='./search_outdir')
+```
+
+If you want to restrict by language, add `lang:en` where en is the language code
+```
+TW.recent_search_tweets('#blacklivesmatter #BLM lang:en', outdir='./search_outdir')
+```
+
+5. Full archive search
+Start time and end time can be included as UTC timestamps, otherwise it will just be the latest tweets
+
+```
+TW.all_search_tweets('#blacklivesmatter #BLM', outdir='./outdir', start_time=start_time, end_time=end_time, max_results=100)
+
+start_time='2020-10-05T00:00:00Z'
+end_time='2020-10-30T23:59:59Z'
+
+TW.all_search_tweets('#blacklivesmatter #BLM', outdir='./outdir', start_time=start_time, end_time=end_time, max_results=100)
+```
+
 ### Additional Utilities 
 1. Convert from V2 to V1 format
 As a standalone on console: 

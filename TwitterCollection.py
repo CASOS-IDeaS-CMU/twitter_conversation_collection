@@ -47,6 +47,10 @@ class TwitterCollection():
         final_result_dir = file_utils.make_results_dir(outdir)
         self.__recent_search_tweets(query, final_result_dir, max_results)
 
+    def all_search_tweets(self, query, outdir='./outdir', start_time=None, end_time=None, max_results=100):
+        final_result_dir = file_utils.make_results_dir(outdir)
+        self.__all_search_tweets(query, final_result_dir, start_time, end_time, max_results)
+
     def __get_replies(self, gzip_filename, final_result_dir):
         parameters = {}
         parameters['expansions'] = ['author_id', 'entities.mentions.username',
@@ -180,6 +184,14 @@ class TwitterCollection():
         file_utils.write_array_to_file(error_users, final_result_dir, label_string='error users')
 
     def __recent_search_tweets(self, query, final_result_dir, max_results):
+        search_type = 'recent_search'
+        self.__do_search(search_type, query=query, final_result_dir=final_result_dir, start_time=None, end_time=None, max_results=max_results)
+
+    def __all_search_tweets(self, query, final_result_dir, start_time=None, end_time=None, max_results=100):
+        search_type = 'all_search'
+        self.__do_search(search_type, query=query, final_result_dir=final_result_dir, start_time=start_time, end_time=end_time, max_results=max_results)
+
+    def __do_search(self, search_type, query, final_result_dir, start_time, end_time, max_results):
         parameters = {}
         parameters['expansions'] = ['author_id', 'referenced_tweets.id', 'in_reply_to_user_id', 'geo.place_id', 'entities.mentions.username', 'referenced_tweets.id.author_id','attachments.media_keys']
 
@@ -191,25 +203,29 @@ class TwitterCollection():
 
         parameters['media.fields'] = ['duration_ms', 'height', 'media_key', 'preview_image_url', 'public_metrics', 'type', 'url', 'width']
 
-        if start_time is not None:
-            parameters['start_time'] = start_time
-        if end_time is not None:
-            parameters['end_time'] = end_time
-
         keepCollecting = True
         next_token = None
         round = 0
         total_tweets = 0
 
         while keepCollecting:
-            url = api_utils.create_search_url(query, params=parameters, next_token=next_token)
+            if search_type == 'recent_search':
+                url = api_utils.create_search_url(query, params=parameters, next_token=next_token)
+            elif search_type == 'all_search':
+                if start_time is not None:
+                    parameters['start_time'] = [start_time]
+                if end_time is not None:
+                    parameters['end_time'] = [end_time]
+
+                url = api_utils.create_all_search_url(query, params=parameters, next_token=next_token)
+
             response = api_utils.connect_to_endpoint(url, self.headers)
 
             if response.status_code == response_status_code.SUCCESS:
                 response_json = response.json()
 
                 error_exists, error_message = api_utils.check_for_error(response_json)
-
+                
                 if not error_exists == response_status_code.INTERNAL_OK:
                     keepCollecting = False 
                     print(error_message)
