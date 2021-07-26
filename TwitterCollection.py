@@ -183,7 +183,6 @@ class TwitterCollection():
         parameters['user.fields'] = ['created_at', 'description', 'entities', 'id', 'location', 'name', 'public_metrics', 'url', 'username', 'verified', 'protected', 'withheld']
 
         error_users = []
-
         for user in user_ids:
             if not isinstance(user, int):
                 error_users.append(f'{user}, {response_status_code.INTERNAL_INVALID_REQUEST}')
@@ -195,7 +194,7 @@ class TwitterCollection():
             if response.status_code == response_status_code.SUCCESS:
                 response_json = response.json()
 
-                error_exists = api_utils.check_for_error(response_json)
+                error_exists, error_message = api_utils.check_for_error(response_json)
                 if error_exists == response_status_code.INTERNAL_OK:
                     file_utils.write_response_json_to_gzip(response_json, os.path.join(final_result_dir, f'timeline_{user}.json.gz'))
                 else:
