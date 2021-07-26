@@ -21,9 +21,17 @@ class TwitterCollection():
 
     def timeline_collection(self, user_ids, outdir='./outdir', max_results=20):
         final_result_dir = file_utils.make_results_dir(outdir)
+        if max_results > 100:
+            max_results = 100
+            print('max results has to be between 5 and 100')
+
         self.__get_timeline(user_ids, final_result_dir, max_results)
 
     def timeline_collection_from_file(self, filename, outdir='./outdir', max_results=20):
+        if max_results > 100:
+            max_results = 100
+            print('max results has to be between 5 and 100')
+        
         user_ids, errorlines = file_utils.read_lines_into_file(filename)
         final_result_dir = file_utils.make_results_dir(outdir)
         file_utils.write_array_to_file(errorlines, final_result_dir, label_string='file reading errors')
