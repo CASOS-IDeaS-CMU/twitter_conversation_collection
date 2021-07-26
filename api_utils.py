@@ -146,10 +146,14 @@ def check_for_error(response_json):
     if 'errors' in response_json: 
         try:
             error_type = response_json['errors'][0]['type']
-            error_message = response_json['errors'][0]['message']
+            error_message = response_json['errors'][0]['detail']
         except:
-            error_type = response_json['type']
-            error_message = response_json['message']
+            try:
+                error_type = response_json['errors'][0][0]['type']
+                error_message = response_json['errors'][0][0]['detail']
+            except:
+                error_type = response_json['type']
+                error_message = response_json['detail']
 
         print('ERROR TYPE, ', error_type)
 
