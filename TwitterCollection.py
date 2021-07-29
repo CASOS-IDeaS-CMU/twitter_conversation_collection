@@ -71,6 +71,18 @@ class TwitterCollection():
         final_result_dir = file_utils.make_results_dir(outdir)
         self.__filtered_stream(query_array_joined, final_result_dir)
 
+    def profile_info_from_username_file(self, infilename, outdir='./outdir'):
+        username_list, errorlines = file_utils.read_string_lines_into_file(infilename)
+        final_result_dir = file_utils.make_results_dir(outdir)
+        file_utils.write_array_to_file(errorlines, final_result_dir, label_string='file reading errors')
+        self.__get_profiles_from_username(username_list, final_result_dir)
+
+    '''
+    =====================
+    Timeline code 
+    =====================
+    '''
+
     def __get_replies(self, gzip_filename, final_result_dir):
         parameters = {}
         parameters['expansions'] = ['author_id', 'entities.mentions.username',
@@ -188,6 +200,7 @@ class TwitterCollection():
                 error_users.append(f'{user}, {response_status_code.INTERNAL_INVALID_REQUEST}')
                 continue
 
+            user = user.strip()
             url = api_utils.create_timeline_id_url(user, params=parameters, max_results=max_results)
             response = api_utils.connect_to_endpoint(url, self.headers)
 
@@ -201,6 +214,12 @@ class TwitterCollection():
                     error_users.append(f'{user}, {error_exists}')
 
         file_utils.write_array_to_file(error_users, final_result_dir, label_string='error users')
+
+    '''
+    ======================
+    Search Tweets
+    ======================
+    '''
 
     def __recent_search_tweets(self, query, final_result_dir, max_results):
         search_type = 'recent_search'
@@ -254,6 +273,38 @@ class TwitterCollection():
                         keepCollecting = False 
             else:
                 print(f'Twitter API Error: {response.status_code}')
+
+    '''
+    ========================
+    Profile Information
+    =======================
+    '''
+    def __get_profiles_from_username(self, username_list, final_result_dir):
+        parameters = {}
+        parameters['user.fields'] = ['created_at', 'description', 'entities', 'id', 'location', 'name', 'public_metrics', 'url', 'username', 'verified', 'protected', 'withheld']
+
+        error_users = []
+        for user in username_list:
+            user = user.strip()
+            url = api_utils.create_username_profile_url(user, params=parameters)
+            response = api_utils.connect_to_endpoint(url, self.headers)
+
+            if response.status_code == response_status_code.SUCCESS:
+                response_json = response.json()
+
+                error_exists, error_message = api_utils.check_for_error(response_json)
+                if error_exists == response_status_code.INTERNAL_OK:
+                    file_utils.write_response_json_to_json(response_json, os.path.join(final_result_dir, f'profile_{user}.json'))
+                else:
+                    error_users.append(f'{user}, {error_message}')
+
+        file_utils.write_array_to_file(error_users, final_result_dir, label_string='error users')
+
+    '''
+    ========================
+    Streaming Code 
+    ========================
+    '''
 
     def __sampled_stream(self, final_result_dir):
         print('Sampling stream...')
@@ -346,6 +397,12 @@ class TwitterCollection():
                 print(f'Twitter API Error: {response.status_code}, {response.text}')
                 keepCollecting = False
 
+
+    '''
+    ==================================
+    V2 to V1 conversion
+    ==================================
+    '''
 
     def convert_gzip_v2_to_v1(self, gzip_filename):
         if not gzip_filename.endswith('.gz'):

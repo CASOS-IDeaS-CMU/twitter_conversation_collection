@@ -142,6 +142,11 @@ def create_all_search_url(search_query, start_time=None, end_time=None, params=N
         url += f"&end_time={end_time}"
     return url    
 
+def create_username_profile_url(username, params=None):
+    url = f"https://api.twitter.com/2/users/by/username/{username}?"
+    url = attach_params(url, params)
+    return url
+
 def check_for_error(response_json):
     if 'errors' in response_json: 
         try:

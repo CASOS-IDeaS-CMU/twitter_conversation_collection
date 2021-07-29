@@ -20,6 +20,19 @@ def read_lines_into_file(filename):
             errorlines.append(x)
     return final_content, errorlines
 
+def read_string_lines_into_file(filename):
+    with open(filename, 'r') as f:
+        content = f.readlines()
+
+    errorlines = []
+    final_content = []
+    for x in content: 
+        try:
+            final_content.append(x.strip())
+        except:
+            errorlines.append(x)
+    return final_content, errorlines
+
 def write_array_to_file(array_to_write, outdir, label_string='error users'):
     out_filename = os.path.join(outdir, f'{label_string}.txt')
     with open(out_filename, 'w') as of:
@@ -53,6 +66,12 @@ def write_response_arr_to_gzip(response_array, outfilename):
             f.write(line.encode())
     f.close()
     return 
+
+def write_response_json_to_json(response_json, outfilename):
+    with open(outfilename, 'w', encoding='utf-8') as f:
+        json.dump(response_json, f)
+
+    return
 
 def read_gzip_json_file(gzipfilename):
     input_data = []
