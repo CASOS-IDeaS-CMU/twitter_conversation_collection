@@ -253,7 +253,6 @@ class TwitterCollection():
                 url = api_utils.create_all_search_url(query, start_time, end_time, params=parameters, next_token=next_token)
 
             response = api_utils.connect_to_endpoint(url, self.headers)
-
             if response.status_code == response_status_code.SUCCESS:
                 response_json = response.json()
 
@@ -272,6 +271,7 @@ class TwitterCollection():
                     if total_tweets > max_results:
                         keepCollecting = False 
             else:
+                print(response.json())
                 print(f'Twitter API Error: {response.status_code}')
 
     '''

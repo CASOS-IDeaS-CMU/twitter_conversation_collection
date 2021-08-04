@@ -99,6 +99,12 @@ To add a list of hashtags, separate them by space
 TW.filtered_stream('#Blacklivesmatters #BLM', outdir='./filtered_stream')
 ```
 
+8. Get profile information from a username file (note, not user-id)
+Note it is a single username per line
+```
+TW.profile_info_from_username_file('username.txt', outdir='outdir')
+```
+
 ### Additional Utilities 
 1. Convert from V2 to V1 format
 As a standalone on console: 
@@ -115,5 +121,4 @@ TW.convert_json_v2_to_v1('test_convert.json.gz')
 
 TODO:
 - streaming add more parameters
-- get user information
 - get user following

@@ -54,7 +54,7 @@ def reformat_entities(v2_tweet):
         if('mentions' in tweet_entities):
             mention_list = []
             for mention in tweet_entities['mentions']:
-                mention_list.append({"screen_name": mention['username'], 'indices': [mention['start'], mention['end']]})
+                mention_list.append({"id": int(mention['id']), "id_str": mention['id'], "screen_name": mention['username'], 'indices': [mention['start'], mention['end']]})
             entities['user_mentions'] = mention_list
             num_done += 1
         if('urls' in tweet_entities):
