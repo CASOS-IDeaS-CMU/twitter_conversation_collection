@@ -140,36 +140,43 @@ for file_num, input_file in enumerate(files_to_convert):
         full_dict = input_data[0]
     elif(input_file[-5:] == '.json'):
         with open(input_file, "r", encoding='utf-8') as f:
-            full_dict = json.loads(f.read())
+            for index, line in enumerate(f):
+                full_dict = json.loads(line)
+
+                #Get referenced tweets info and convert date and entities to v1 format
+                for referenced_tweet in full_dict['includes']['tweets']:
+                    dt_obj = dt.datetime.strptime(referenced_tweet['created_at'], "%Y-%m-%dT%H:%M:%S.000Z")
+                    referenced_tweet['created_at'] = dt_obj.strftime("%a %b %d %H:%M:%S +0000 %Y")
+                    referenced_tweet['entities'] = reformat_entities(referenced_tweet)
+                    referenced_tweets[referenced_tweet['id']] = referenced_tweet
+
+                #Get author/user info and add screen_name field
+                for author_info in full_dict['includes']['users']:
+                    author_info['screen_name'] = author_info['username']
+                    author_info['id_str'] = author_info['id']
+                    try: author_info['followers_count'] = author_info['public_metrics']['followers_count']
+                    except: author_info['followers_count'] = 0
+                    try: author_info['friends_count'] = author_info['public_metrics']['following_count']
+                    except: author_info['friends_count'] = 0
+                    author_info['favourites_count'] = 0
+                    try: author_info['statuses_count'] = author_info['public_metrics']['tweet_count']
+                    except: author_info['statuses_count'] = 0
+                    authors_lookup[author_info['id']] = author_info
+
+                total_posts_in_file = 0
+
+                #For each tweet, reformat date and entities and add in user info and referenced tweet info (if applicable)
+                for tweet in full_dict['data']:
+                    v1_tweet = reformat_tweet(tweet, referenced_tweets, authors_lookup)
+                    converted_list.append(v1_tweet)       
+                    total_posts_in_file += 1   
+
+                print("    Total posts in file line " + str(index) + ": " + str(total_posts_in_file)) 
+
+
     else:
         raise ValueError('Cannot convert this file type, file name must end in ".json" or  ".json.gz".')
 
-    #Get referenced tweets info and convert date and entities to v1 format
-    for referenced_tweet in full_dict['includes']['tweets']:
-        dt_obj = dt.datetime.strptime(referenced_tweet['created_at'], "%Y-%m-%dT%H:%M:%S.000Z")
-        referenced_tweet['created_at'] = dt_obj.strftime("%a %b %d %H:%M:%S +0000 %Y")
-        referenced_tweet['entities'] = reformat_entities(referenced_tweet)
-        referenced_tweets[referenced_tweet['id']] = referenced_tweet
-
-    #Get author/user info and add screen_name field
-    for author_info in full_dict['includes']['users']:
-        author_info['screen_name'] = author_info['username']
-        author_info['id_str'] = author_info['id']
-        author_info['followers_count'] = author_info['public_metrics']['followers_count']
-        author_info['friends_count'] = author_info['public_metrics']['following_count']
-        author_info['favourites_count'] = 0
-        author_info['statuses_count'] = author_info['public_metrics']['tweet_count']
-        authors_lookup[author_info['id']] = author_info
-
-    total_posts_in_file = 0
-
-    #For each tweet, reformat date and entities and add in user info and referenced tweet info (if applicable)
-    for tweet in full_dict['data']:
-        v1_tweet = reformat_tweet(tweet, referenced_tweets, authors_lookup)
-        converted_list.append(v1_tweet)       
-        total_posts_in_file += 1   
-
-    print("    Total posts in file: " + str(total_posts_in_file)) 
 
     #Output the converted tweets to file of specified type 
     base_filename = input_file
