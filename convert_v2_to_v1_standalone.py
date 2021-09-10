@@ -117,14 +117,15 @@ def reformat_tweet(v2_tweet, referenced_tweets, authors_lookup):
     return tweet
 
 
-def process_tweet_dict (full_dict, converted_list, referenced_tweets, authors_lookup, index=0):
+def process_tweet_dict (full_dict, converted_list, referenced_tweets, authors_lookup, index):
 
     #Get referenced tweets info and convert date and entities to v1 format
-    for referenced_tweet in full_dict['includes']['tweets']:
-        dt_obj = dt.datetime.strptime(referenced_tweet['created_at'], "%Y-%m-%dT%H:%M:%S.000Z")
-        referenced_tweet['created_at'] = dt_obj.strftime("%a %b %d %H:%M:%S +0000 %Y")
-        referenced_tweet['entities'] = reformat_entities(referenced_tweet)
-        referenced_tweets[referenced_tweet['id']] = referenced_tweet
+    if('includes' in full_dict and 'tweets' in full_dict['includes']):
+        for referenced_tweet in full_dict['includes']['tweets']:
+            dt_obj = dt.datetime.strptime(referenced_tweet['created_at'], "%Y-%m-%dT%H:%M:%S.000Z")
+            referenced_tweet['created_at'] = dt_obj.strftime("%a %b %d %H:%M:%S +0000 %Y")
+            referenced_tweet['entities'] = reformat_entities(referenced_tweet)
+            referenced_tweets[referenced_tweet['id']] = referenced_tweet
 
     #Get author/user info and add screen_name field
     for author_info in full_dict['includes']['users']:
@@ -172,9 +173,11 @@ for file_num, input_file in enumerate(files_to_convert):
     print("    Reading in: " + input_file)
 
     if(input_file[-8:] == '.json.gz'):
+        index = 0
         for line in gzip.open(input_file, 'r'): 
             full_dict = json.loads(line)
-            (converted_list, referenced_tweets, authors_lookup) = process_tweet_dict(full_dict, converted_list, referenced_tweets, authors_lookup)
+            (converted_list, referenced_tweets, authors_lookup) = process_tweet_dict(full_dict, converted_list, referenced_tweets, authors_lookup, index)
+            index += 1
 
     elif(input_file[-5:] == '.json'):
         with open(input_file, "r", encoding='utf-8') as f:
@@ -186,6 +189,7 @@ for file_num, input_file in enumerate(files_to_convert):
         raise ValueError('Cannot convert this file type, file name must end in ".json" or  ".json.gz".')
 
     #Output the converted tweets to file of specified type 
+    print("Writing out converted data")
     base_filename = input_file
     if(base_filename[-8:] == '.json.gz'): base_filename = base_filename[:-8]
     elif(base_filename[-5:] == '.json'): base_filename = base_filename[:-5]
