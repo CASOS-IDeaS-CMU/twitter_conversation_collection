@@ -34,7 +34,8 @@ def write_to_file_json(filename, data_list):
             print(json.dumps(tweet, sort_keys=True), file=outfile)
 
 
-def reformat_entities(v2_tweet):
+def reformat_entities(v2_tweet, username_to_id_lookup):
+
     entities = {"annotations": [], "hashtags": [], "symbols": [], "user_mentions": [], "urls": []}
     if('entities' in v2_tweet):
         tweet_entities = v2_tweet['entities']
@@ -56,6 +57,9 @@ def reformat_entities(v2_tweet):
             for mention in tweet_entities['mentions']:
                 if('id' in mention):
                     mention_list.append({"id": int(mention['id']), "id_str": mention['id'], "screen_name": mention['username'], 'indices': [mention['start'], mention['end']]})
+                elif(mention['username'] in username_to_id_lookup):
+                    mention['id'] = username_to_id_lookup[mention['username']]
+                    mention_list.append({"id": int(mention['id']), "id_str": mention['id'], "screen_name": mention['username'], 'indices': [mention['start'], mention['end']]})
                 else:
                     mention_list.append({"screen_name": mention['username'], 'indices': [mention['start'], mention['end']]})
             entities['user_mentions'] = mention_list
@@ -69,20 +73,27 @@ def reformat_entities(v2_tweet):
     return entities
 
 
-def reformat_tweet(v2_tweet, referenced_tweets, authors_lookup):
+def reformat_tweet(v2_tweet, referenced_tweets, authors_lookup, username_to_id_lookup, is_reference_tweet=False):
 
     tweet = v2_tweet
 
-    author = authors_lookup[tweet['author_id']]
-    tweet['user'] = author
-
+    if(tweet['author_id'] in authors_lookup):
+        author = authors_lookup[tweet['author_id']]
+        tweet['user'] = author
     tweet['id_str'] = tweet['id']
     tweet['coordinates'] = None
 
     dt_obj = dt.datetime.strptime(tweet['created_at'], "%Y-%m-%dT%H:%M:%S.000Z")
     tweet['created_at'] = dt_obj.strftime("%a %b %d %H:%M:%S +0000 %Y")
 
-    tweet['entities'] = reformat_entities(tweet)
+    tweet['entities'] = reformat_entities(tweet, username_to_id_lookup)
+
+    if('in_reply_to_user_id' in tweet):
+        tweet['in_reply_to_user_id_str'] = tweet['in_reply_to_user_id']
+        tweet['in_reply_to_user_id'] = int(tweet['in_reply_to_user_id'])
+        if(tweet['in_reply_to_user_id_str'] in authors_lookup):
+            tweet['in_reply_to_screen_name'] = authors_lookup[tweet['in_reply_to_user_id_str']]['screen_name']
+
 
     if('referenced_tweets' in tweet):
         if(tweet['referenced_tweets'][0]['type'] not in ['retweeted', 'replied_to', 'quoted']):
@@ -90,42 +101,43 @@ def reformat_tweet(v2_tweet, referenced_tweets, authors_lookup):
         for referenced_tweet in tweet['referenced_tweets']:
             if(referenced_tweet['type'] == 'retweeted'):
                 reference_id = referenced_tweet['id']
-                try:
-                    tweet_lookup = referenced_tweets[reference_id]
-                    tweet['retweeted_status'] = tweet_lookup
-                    tweet['retweeted_status']['user'] = authors_lookup[tweet_lookup['author_id']]
-                except:
-                    print("Couldn't find retweeted tweet")
+                if(is_reference_tweet):
+                    tweet['retweeted_status'] = {'id': int(referenced_tweet['id']), 'id_str': referenced_tweet['id']}
+                else:
+                    try:
+                        tweet_lookup = referenced_tweets[reference_id]
+                        tweet['retweeted_status'] = tweet_lookup
+                        tweet['retweeted_status']['user'] = authors_lookup[tweet_lookup['author_id']]
+                    except:
+                        print("Couldn't find retweeted tweet")
 
             if(referenced_tweet['type'] == 'replied_to'):
-                tweet['in_reply_to_user_id_str'] = tweet['in_reply_to_user_id']
-                tweet['in_reply_to_user_id'] = int(tweet['in_reply_to_user_id'])
                 tweet['in_reply_to_status_id'] = int(referenced_tweet['id'])
                 tweet['in_reply_to_status_id_str'] = referenced_tweet['id']
+                if(tweet['in_reply_to_user_id_str'] in authors_lookup):
+                    tweet['in_reply_to_screen_name'] = authors_lookup[tweet['in_reply_to_user_id_str']]['screen_name']
 
             if(referenced_tweet['type'] == 'quoted'):
                 tweet['is_quote_status'] = True
                 tweet['quoted_status_id'] = int(referenced_tweet['id'])
                 tweet['quoted_status_id_str'] = referenced_tweet['id']
-                reference_id = referenced_tweet['id']
-                try:
-                    tweet_lookup = referenced_tweets[reference_id]
-                    tweet['quoted_status'] = tweet_lookup
-                    tweet['quoted_status']['user'] = authors_lookup[tweet_lookup['author_id']]
-                except:
-                    print("Couldn't find quoted tweet")  
+                if(is_reference_tweet):
+                    tweet['quoted_status'] = {'id': int(referenced_tweet['id']), 'id_str': referenced_tweet['id']}
+                else:
+                    try:
+                        reference_id = referenced_tweet['id']
+                        tweet_lookup = referenced_tweets[reference_id]
+                        tweet['quoted_status'] = tweet_lookup
+                        tweet['quoted_status']['user'] = authors_lookup[tweet_lookup['author_id']]
+                    except:
+                        print("Couldn't find quoted tweet")  
+
     return tweet
 
 
 def process_tweet_dict (full_dict, converted_list, referenced_tweets, authors_lookup, index):
 
-    #Get referenced tweets info and convert date and entities to v1 format
-    if('includes' in full_dict and 'tweets' in full_dict['includes']):
-        for referenced_tweet in full_dict['includes']['tweets']:
-            dt_obj = dt.datetime.strptime(referenced_tweet['created_at'], "%Y-%m-%dT%H:%M:%S.000Z")
-            referenced_tweet['created_at'] = dt_obj.strftime("%a %b %d %H:%M:%S +0000 %Y")
-            referenced_tweet['entities'] = reformat_entities(referenced_tweet)
-            referenced_tweets[referenced_tweet['id']] = referenced_tweet
+    username_to_id_lookup = {}
 
     #Get author/user info and add screen_name field
     for author_info in full_dict['includes']['users']:
@@ -139,12 +151,18 @@ def process_tweet_dict (full_dict, converted_list, referenced_tweets, authors_lo
         try: author_info['statuses_count'] = author_info['public_metrics']['tweet_count']
         except: author_info['statuses_count'] = 0
         authors_lookup[author_info['id']] = author_info
+        username_to_id_lookup[author_info['username']] = author_info['id_str']
+
+    #Get referenced tweets info and convert date and entities to v1 format
+    if('includes' in full_dict and 'tweets' in full_dict['includes']):
+        for referenced_tweet in full_dict['includes']['tweets']:
+            referenced_tweets[referenced_tweet['id']] = reformat_tweet(referenced_tweet, {}, authors_lookup, username_to_id_lookup, True)
 
     total_posts_in_file = 0
 
     #For each tweet, reformat date and entities and add in user info and referenced tweet info (if applicable)
     for tweet in full_dict['data']:
-        v1_tweet = reformat_tweet(tweet, referenced_tweets, authors_lookup)
+        v1_tweet = reformat_tweet(tweet, referenced_tweets, authors_lookup, username_to_id_lookup)
         converted_list.append(v1_tweet)       
         total_posts_in_file += 1   
 
