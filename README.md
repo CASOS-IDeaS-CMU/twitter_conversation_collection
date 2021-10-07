@@ -28,7 +28,7 @@ user_id.txt
 
 Then in python, run:
 ```
-TW.timeline_collection_from_file(user_id.txt, './outdir', max_results=10)
+TW.timeline_collection_from_file('user_id.txt', './outdir', max_results=10)
 ```
 
 2. Get conversations, default max results of number of original tweets per convo is 10
@@ -116,7 +116,7 @@ For example: python convert_v2_to_v1_standalone.py json "test_file1.json.gz" "te
 As part of a module
 ```
 TW.convert_json_v2_to_v1('test_convert.json')
-TW.convert_json_v2_to_v1('test_convert.json.gz')
+TW.convert_gzip_v2_to_v1('test_convert.json.gz')
 ```
 
 TODO:
