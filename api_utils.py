@@ -167,5 +167,4 @@ def check_for_error(response_json):
             return response_status_code.INTERNAL_INVALID_REQUEST, error_message
         elif error_type == response_status_code.NOT_FOUND_ERROR:
             return response_status_code.INTERNAL_NOT_FOUND, error_message
-    else:
-        return response_status_code.INTERNAL_OK, ''
+    return response_status_code.INTERNAL_OK, ''
