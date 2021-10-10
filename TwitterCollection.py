@@ -165,26 +165,43 @@ class TwitterCollection():
             round = 0
             keepCollecting = True
             next_token = None
+            merged_response_json = {}
+
             while keepCollecting:
-                url = api_utils.create_convo_url(convo, params=parameters, next_token=next_token)
+                url = api_utils.create_convo_url(convo, params=parameters, next_token=next_token, max_results=max_results-total_tweets)
                 response = api_utils.connect_to_endpoint(url, self.headers)
 
-                if response.status_code == response_status_code.SUCCESS:
-                    response_json = response.json()
-
-                error_exists = api_utils.check_for_error(response_json)
-                if not error_exists == response_status_code.INTERNAL_OK:
-                    error_convos.append(f'{convo}, {error_exists}')
-                    keepCollecting = False 
+                if response.status_code != response_status_code.SUCCESS:
+                    print(response.status_code)
 
                 else:
-                    file_utils.write_response_json_to_gzip(response_json, os.path.join(final_result_dir, f'convo_{convo}_{round}_.json.gz'))
+                    response_json = response.json()
+                    error_exists = api_utils.check_for_error(response_json)
+                    if error_exists[0] == response_status_code.INVALID_REQUEST:
+                        error_convos.append(f'{convo}, {error_exists}')
+                        keepCollecting = False 
 
-                    round += 1
-                    total_tweets += len(response_json['data'])
+                    else:
+                        if(error_exists[0] == response_status_code.NOT_FOUND_ERROR):
+                            error_convos.append(f'{convo}, {error_exists}')
 
-                    if total_tweets >= max_results:
-                        keepCollecting = False
+                        if('data' in response_json):
+                            merged_response_json = self.__merge_response_jsons(response_json, merged_response_json)
+                            file_utils.write_response_json_to_gzip(response_json, os.path.join(final_result_dir, f'convo_{convo}_{round}_.json.gz'))
+
+                            round += 1
+                            total_tweets += len(response_json['data'])
+
+                            if total_tweets >= max_results or 'next_token' not in response_json['meta']:
+                                keepCollecting = False
+                            else:
+                                next_token = response_json['meta']['next_token']
+                        else:
+                            keepCollecting = False
+
+            if(len(merged_response_json) > 0):
+                file_utils.write_response_json_to_gzip(merged_response_json, os.path.join(final_result_dir, f'convo_{convo}_all_data_.json.gz'))
+
 
     def __get_timeline(self, user_ids, final_result_dir, max_results=10):
         parameters = {}
@@ -200,7 +217,7 @@ class TwitterCollection():
                 error_users.append(f'{user}, {response_status_code.INTERNAL_INVALID_REQUEST}')
                 continue
 
-            user = user.strip()
+            user = str(user).strip()
             url = api_utils.create_timeline_id_url(user, params=parameters, max_results=max_results)
             response = api_utils.connect_to_endpoint(url, self.headers)
 
@@ -245,6 +262,8 @@ class TwitterCollection():
         next_token = None
         round = 0
         total_tweets = 0
+        merged_response_json = {}
+        query_truncate = query[:10]
 
         while keepCollecting:
             if search_type == 'recent_search':
@@ -253,26 +272,38 @@ class TwitterCollection():
                 url = api_utils.create_all_search_url(query, start_time, end_time, params=parameters, next_token=next_token)
 
             response = api_utils.connect_to_endpoint(url, self.headers)
-            if response.status_code == response_status_code.SUCCESS:
-                response_json = response.json()
-
-                error_exists, error_message = api_utils.check_for_error(response_json)
-                
-                if not error_exists == response_status_code.INTERNAL_OK:
-                    keepCollecting = False 
-                    print(error_message)
-
-                else:
-                    round += 1
-                    query_truncate = query[:10]
-                    file_utils.write_response_json_to_gzip(response_json, os.path.join(final_result_dir, f'search_{query_truncate}_{round}_.json.gz'))
-                    total_tweets += len(response_json['data'])
-
-                    if total_tweets > max_results:
-                        keepCollecting = False 
-            else:
+            if response.status_code != response_status_code.SUCCESS:
                 print(response.json())
                 print(f'Twitter API Error: {response.status_code}')
+                keepCollecting = False
+            else:
+                response_json = response.json()
+                error_exists, error_message = api_utils.check_for_error(response_json)
+                
+                if error_exists[0] == response_status_code.INVALID_REQUEST:
+                    error_convos.append(f'{convo}, {error_exists}')
+                    keepCollecting = False 
+
+                else:
+                    if(error_exists[0] == response_status_code.NOT_FOUND_ERROR):
+                        error_convos.append(f'{convo}, {error_exists}')
+
+                    if('data' in response_json):
+                        merged_response_json = self.__merge_response_jsons(response_json, merged_response_json)
+                        file_utils.write_response_json_to_gzip(response_json, os.path.join(final_result_dir, f'search_{query_truncate}_{round}_.json.gz'))
+
+                        round += 1
+                        total_tweets += len(response_json['data'])
+
+                        if total_tweets >= max_results or 'next_token' not in response_json['meta']:
+                            keepCollecting = False
+                        else:
+                            next_token = response_json['meta']['next_token']
+                    else:
+                        keepCollecting = False
+
+        if(len(merged_response_json) > 0):
+            file_utils.write_response_json_to_gzip(merged_response_json, os.path.join(final_result_dir, f'search_{query_truncate}_all_data_.json.gz'))
 
     '''
     ========================
@@ -430,3 +461,40 @@ class TwitterCollection():
         output_filename = convert_v2_to_v1.convert_json(full_dict, json_filename)
         print(f'Conversion done, output file in {output_filename}')
         
+
+    '''
+    =====================
+    Combine multiple response json code 
+    =====================
+    '''
+
+    def __merge_response_jsons(self, response_json_to_add, merged_response_json=None):
+        if(len(merged_response_json) == 0):
+            merged_response_json = {'data':[], 'includes': {'users':[], 'tweets':[], 'places':[], 'media':[], 'polls':[]}, 'errors':[], 'meta':{}}
+        for tweet in response_json_to_add['data']:
+            merged_response_json['data'].append(tweet)
+        self.__add__expansion_parameter_to_json('users', merged_response_json, response_json_to_add)
+        self.__add__expansion_parameter_to_json('tweets', merged_response_json, response_json_to_add)
+        self.__add__expansion_parameter_to_json('places', merged_response_json, response_json_to_add)
+        self.__add__expansion_parameter_to_json('media', merged_response_json, response_json_to_add)
+        self.__add__expansion_parameter_to_json('polls', merged_response_json, response_json_to_add)
+        if('errors' in response_json_to_add):
+            for error in response_json_to_add['errors']:
+                merged_response_json['errors'].append(error)
+        if(len(merged_response_json['meta']) == 0):
+            merged_response_json['meta'] = response_json_to_add['meta']
+        else:
+            merged_response_json['meta']['oldest_id'] = response_json_to_add['meta']['oldest_id']
+            merged_response_json['meta']['result_count'] += response_json_to_add['meta']['result_count']
+        if('next_token' in response_json_to_add['meta']):
+            merged_response_json['meta']['next_token'] = response_json_to_add['meta']['next_token']
+        else:
+            merged_response_json['meta'].pop('next_token', 'none')
+        return merged_response_json
+        
+
+    def __add__expansion_parameter_to_json(self, parameter, merged_response_json, response_json_to_add):
+        if(parameter in response_json_to_add['includes']):
+            for expansion_obj in response_json_to_add['includes'][parameter]:
+                merged_response_json['includes'][parameter].append(expansion_obj)
+ 
