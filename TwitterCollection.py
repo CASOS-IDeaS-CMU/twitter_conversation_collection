@@ -267,9 +267,9 @@ class TwitterCollection():
 
         while keepCollecting:
             if search_type == 'recent_search':
-                url = api_utils.create_search_url(query, params=parameters, next_token=next_token)
+                url = api_utils.create_search_url(query, params=parameters, next_token=next_token, max_results=max_results)
             elif search_type == 'all_search':
-                url = api_utils.create_all_search_url(query, start_time, end_time, params=parameters, next_token=next_token)
+                url = api_utils.create_all_search_url(query, start_time, end_time, params=parameters, next_token=next_token, max_results=max_results)
 
             response = api_utils.connect_to_endpoint(url, self.headers)
             if response.status_code != response_status_code.SUCCESS:
