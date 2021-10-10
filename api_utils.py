@@ -30,6 +30,8 @@ def attach_params(url, params):
     return url
 
 def create_convo_url(cid, params=None, next_token=None, max_results=100):
+    if(max_results > 100): max_results = 100
+    if(max_results < 10): max_results = 10
     url = f"https://api.twitter.com/2/tweets/search/recent?query=conversation_id:{cid}&max_results={max_results}"
     if next_token:
         url += f"&next_token={next_token}"
@@ -121,6 +123,7 @@ def create_search_url(search_query, params=None, next_token=None, max_results=10
     if max_results > 100:
         max_results = 100
         print('Max results by Twitter API can only be 100')
+    if max_results < 10: max_results = 10
     query = urllib.parse.quote(search_query)
     url = f"https://api.twitter.com/2/tweets/search/recent?query={query}&max_results={max_results}"
     if next_token:
@@ -130,6 +133,8 @@ def create_search_url(search_query, params=None, next_token=None, max_results=10
     return url
 
 def create_all_search_url(search_query, start_time=None, end_time=None, params=None, next_token=None, max_results=100):
+    if max_results > 500: max_results = 500
+    if max_results < 10: max_results = 10
     query = urllib.parse.quote(search_query)
     url = f"https://api.twitter.com/2/tweets/search/all?query={query}&max_results={max_results}"
     if next_token:
@@ -159,7 +164,7 @@ def check_for_error(response_json):
             except:
                 error_type = response_json['type']
                 error_message = response_json['detail']
-
+        
         print('ERROR TYPE, ', error_type)
 
         if error_type == response_status_code.INVALID_REQUEST:
@@ -167,4 +172,5 @@ def check_for_error(response_json):
             return response_status_code.INTERNAL_INVALID_REQUEST, error_message
         elif error_type == response_status_code.NOT_FOUND_ERROR:
             return response_status_code.INTERNAL_NOT_FOUND, error_message
+
     return response_status_code.INTERNAL_OK, ''
