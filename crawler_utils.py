@@ -10,7 +10,8 @@ def iterTweet(tweet):
         yield tweet['quoted_status']
 
 def quoteTweet(tweet):
-    urls = tweet['entities']['urls']
+    if('urls' in tweet['entities']): urls = tweet['entities']['urls']
+    else: urls = []
     quotes = set()
     if len(urls) == 0:
         pass
@@ -38,9 +39,11 @@ def findMissingTweets(gzip_filename):
 
     with  gzip.open(gzip_filename, 'r') as f:
         for line in f:
+            supertweet = json.loads(line)
             try:
                 supertweet = json.loads(line)
             except:
+                print('Error in loading specified input file.')
                 continue 
 
             if len(supertweet) <= 1: continue
@@ -51,6 +54,9 @@ def findMissingTweets(gzip_filename):
                     referencedTweets.add(tweet['in_reply_to_status_id'])
                 if ('quoted_status_id' in tweet) and (tweet['quoted_status_id'] is not None):
                     referencedTweets.add(tweet['quoted_status_id'])
+                if ('referenced_tweets' in tweet):
+                    for refereced_tweet in tweet['referenced_tweets']:
+                        referencedTweets.add(refereced_tweet['id'])
 
                 additional_quotes = quoteTweet(tweet)
                 referencedTweets.update(additional_quotes)
