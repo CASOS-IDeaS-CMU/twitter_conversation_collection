@@ -120,9 +120,7 @@ def sampled_stream_url(params):
 #https://api.twitter.com/2/tweets/search/stream
 
 def create_search_url(search_query, params=None, next_token=None, max_results=100):
-    if max_results > 100:
-        max_results = 100
-        print('Max results by Twitter API can only be 100')
+    if max_results > 100: max_results = 100
     if max_results < 10: max_results = 10
     query = urllib.parse.quote(search_query)
     url = f"https://api.twitter.com/2/tweets/search/recent?query={query}&max_results={max_results}"
