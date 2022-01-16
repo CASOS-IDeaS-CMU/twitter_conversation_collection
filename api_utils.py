@@ -49,8 +49,12 @@ def create_tweet_url(tids, params=None):
         url = attach_params(url, params)
     return url
 
-def create_timeline_id_url(uid, params=None, max_results=10):
+def create_timeline_id_url(uid, params=None, next_token = None, max_results=10):
+    if(max_results > 100): max_results = 100
+    if(max_results < 10): max_results = 10
     url = f"https://api.twitter.com/2/users/{uid}/tweets?&max_results={max_results}"
+    if next_token:
+        url += f"&pagination_token={next_token}"
     if params:
         url = attach_params(url, params)
     return url

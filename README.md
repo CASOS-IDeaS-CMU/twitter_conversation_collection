@@ -14,10 +14,11 @@ Unsure of how to get a bearer token? Check this out on how to get set up with th
 
 ## Using as a Python Module 
 #### 1. Get Timeline for specified users. 
-Max results default is 10. Collected data is stored in the user-specified outdir, in a folder named with the date and time of the function call.
+Max results default is 10 per json response, with a limit of 100. Num_Results is total number of tweets desired, with a maximum of 3,200 tweets. 
+Collected data is stored in the user-specified outdir, in a folder named with the date and time of the function call.
 ```
 user_ids = [164422451, 255516424]
-TW.timeline_collection(user_ids, './outdir', max_results=10)
+TW.timeline_collection(user_ids, './outdir', max_results=100, num_results = 3200)
 ```
 OR
 Make a file with one user id per line:

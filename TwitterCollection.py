@@ -1,7 +1,6 @@
 import os
 import time
 import json
-
 import file_utils
 import api_utils
 import response_status_code
@@ -19,13 +18,17 @@ class TwitterCollection():
     def __get_headers(self):
         return self.headers
 
-    def timeline_collection(self, user_ids, outdir='./outdir', max_results=20):
+    def timeline_collection(self, user_ids, outdir='./outdir', max_results=10, num_tweets = 3200):
+        '''
+        Twitter API V2 Timeline Limit: Provides the last 3,200 tweets from a 
+        timeline. 
+        '''
         final_result_dir = file_utils.make_results_dir(outdir)
         if max_results > 100:
             max_results = 100
             print('max results has to be between 5 and 100')
 
-        self.__get_timeline(user_ids, final_result_dir, max_results)
+        self.__get_timeline(user_ids, final_result_dir, max_results, num_tweets)
 
     def timeline_collection_from_file(self, filename, outdir='./outdir', max_results=20):
         if max_results > 100:
@@ -203,7 +206,38 @@ class TwitterCollection():
                 file_utils.write_response_json_to_gzip(merged_response_json, os.path.join(final_result_dir, f'convo_{convo}_all_data_.json.gz'))
 
 
-    def __get_timeline(self, user_ids, final_result_dir, max_results=10):
+    # def __get_timeline(self, user_ids, final_result_dir, max_results=10):
+    #     parameters = {}
+    #     parameters['expansions'] = ['author_id', 'referenced_tweets.id', 'referenced_tweets.id.author_id']
+    #     parameters['tweet.fields'] = ['attachments', 'author_id', 'conversation_id', 'created_at', 'entities', 'geo', 'id', 'in_reply_to_user_id', 'lang',
+    #                     'possibly_sensitive', 'public_metrics', 'referenced_tweets', 'reply_settings',
+    #                     'source', 'text', 'withheld']
+    #     parameters['user.fields'] = ['created_at', 'description', 'entities', 'id', 'location', 'name', 'public_metrics', 'url', 'username', 'verified', 'protected', 'withheld']
+
+    #     error_users = []
+    #     for user in user_ids:
+    #         if not isinstance(user, int):
+    #             error_users.append(f'{user}, {response_status_code.INTERNAL_INVALID_REQUEST}')
+    #             continue
+
+    #         user = str(user).strip()
+    #         url = api_utils.create_timeline_id_url(user, params=parameters, max_results=max_results)
+    #         response = api_utils.connect_to_endpoint(url, self.headers)
+
+    #         if response.status_code == response_status_code.SUCCESS:
+    #             response_json = response.json()
+
+    #             error_exists, error_message = api_utils.check_for_error(response_json)
+    #             if error_exists == response_status_code.INTERNAL_OK:
+    #                 file_utils.write_response_json_to_gzip(response_json, os.path.join(final_result_dir, f'timeline_{user}.json.gz'))
+    #             else:
+    #                 error_users.append(f'{user}, {error_exists}')
+
+    #     file_utils.write_array_to_file(error_users, final_result_dir, label_string='error users')
+        
+        
+    def __get_timeline(self, user_ids, final_result_dir, max_results=100, num_tweets = 3200):
+
         parameters = {}
         parameters['expansions'] = ['author_id', 'referenced_tweets.id', 'referenced_tweets.id.author_id']
         parameters['tweet.fields'] = ['attachments', 'author_id', 'conversation_id', 'created_at', 'entities', 'geo', 'id', 'in_reply_to_user_id', 'lang',
@@ -212,25 +246,59 @@ class TwitterCollection():
         parameters['user.fields'] = ['created_at', 'description', 'entities', 'id', 'location', 'name', 'public_metrics', 'url', 'username', 'verified', 'protected', 'withheld']
 
         error_users = []
+        
         for user in user_ids:
+            
             if not isinstance(user, int):
                 error_users.append(f'{user}, {response_status_code.INTERNAL_INVALID_REQUEST}')
                 continue
-
-            user = str(user).strip()
-            url = api_utils.create_timeline_id_url(user, params=parameters, max_results=max_results)
-            response = api_utils.connect_to_endpoint(url, self.headers)
-
-            if response.status_code == response_status_code.SUCCESS:
-                response_json = response.json()
-
-                error_exists, error_message = api_utils.check_for_error(response_json)
-                if error_exists == response_status_code.INTERNAL_OK:
-                    file_utils.write_response_json_to_gzip(response_json, os.path.join(final_result_dir, f'timeline_{user}.json.gz'))
+            
+            total_tweets=0
+            round=0
+            keepCollecting = True
+            next_token = None
+            merged_response_json = {}
+            
+            while keepCollecting:    
+                user = str(user).strip()
+                url = api_utils.create_timeline_id_url(user, params=parameters, next_token = next_token, max_results=max_results)
+                response = api_utils.connect_to_endpoint(url, self.headers)
+        
+                if response.status_code != response_status_code.SUCCESS:
+                    print(response.json())
+                    print(f'Twitter API Error: {response.status_code}')
+                    keepCollecting = False
+                    
                 else:
-                    error_users.append(f'{user}, {error_exists}')
+                    response_json = response.json()
+                    error_exists, error_message = api_utils.check_for_error(response_json)
+                
+                    if error_exists[0] == response_status_code.INVALID_REQUEST:
+                        error_convos.append(f'{user}, {error_exists}')
+                        keepCollecting = False 
 
-        file_utils.write_array_to_file(error_users, final_result_dir, label_string='error users')
+                    else:
+                        
+                        if(error_exists[0] == response_status_code.NOT_FOUND_ERROR):
+                            error_convos.append(f'{user}, {error_exists}')
+
+                        if('data' in response_json):
+                            merged_response_json = self.__merge_response_jsons(response_json, merged_response_json)
+                            #file_utils.write_response_json_to_gzip(response_json, os.path.join(final_result_dir, f'timeline_{user}_{round}_.json.gz'))
+
+                            round += 1
+                            total_tweets += len(response_json['data'])
+
+                            if total_tweets >= num_tweets or 'next_token' not in response_json['meta']:
+                                keepCollecting = False
+                            else:
+                                next_token = response_json['meta']['next_token']
+                        else:
+                            keepCollecting = False
+
+            if(len(merged_response_json) > 0):
+                file_utils.write_response_json_to_gzip(merged_response_json, os.path.join(final_result_dir, f'timeline_{user}.json.gz'))
+        
 
     '''
     ======================
