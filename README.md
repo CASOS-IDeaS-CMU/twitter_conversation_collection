@@ -60,12 +60,17 @@ The input file, infilename.json.gz, should be formatted with one tweet JSON obje
 TW.get_replies_from_tweet_gzip_file('infilename.json.gz', './outdir')
 ```
 
-#### 4. Recent search, back 7 days.
-Max results default is 100 tweets. Collected data is stored in the user-specified outdir, in a folder named with the date and time of the function call. Files ending in numbers are data from individual API calls. Files ending in 'all_data' are the combined data from all of the indvidual API calls.
-
+#### 4. Recent search, last 7 days.
+The variable `max_results` is total number of tweets a user wants to query (increments of 100). The twitter default is 10 and maximum of 100 tweets per json response. This method will continue making API calls until max_results is reached. 
+Collected data is stored in the user-specified outdir, in a folder named with the date and time of the function call. Files ending in 'all_data' are the combined data from all of the indvidual API calls.
+The recent_search endpoint is useful for collecting recent events. The query parameter is a string with at least one hashtag. A string comprised of multiple hashtags results in tweets where both queries are present. 
+Query Limit: No tweet limit beyond your Twitter Research Development tweet limits/month.
+Rate Limit: 450 Requests every 15 minutes
 ```
 TW.recent_search_tweets(query, outdir='./outdir', max_results=100)
-For example: TW.recent_search_tweets('#blacklivesmatter #BLM', outdir='./search_outdir', max_results=100)
+example of AND operator query: TW.recent_search_tweets('#blacklivesmatter #BLM', outdir='./search_outdir', max_results=100)
+example of OR operator query: TW.recent_search_tweets('grumpy OR cat', outdir='./search_outdir', max_results= )
+example of single query: TW.recent_search_tweets('#taiwan', outdir='./search_outdir', max_results=50000)
 ```
 
 If you want to restrict by language, add `lang:en` where en is the language code:
@@ -76,7 +81,7 @@ For more information on building queries and query operators: https://developer.
 
 #### 5. Full archive search.
 Max results default is 100 tweets. Start time and end time can be included as UTC timestamps, otherwise it will just be the latest tweets. Collected data is stored in the user-specified outdir, in a folder named with the date and time of the function call. Files ending in numbers are data from individual API calls. Files ending in 'all_data' are the combined data from all of the indvidual API calls.
-
+Restricted to Twitter Research Account Access
 ```
 TW.all_search_tweets(query, outdir='./outdir', start_time=start_time, end_time=end_time, max_results=100)
 ```

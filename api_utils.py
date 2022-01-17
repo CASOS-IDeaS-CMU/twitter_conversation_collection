@@ -121,7 +121,6 @@ def sampled_stream_url(params):
         url = attach_params(url, params)
     return url
 
-#https://api.twitter.com/2/tweets/search/stream
 
 def create_search_url(search_query, params=None, next_token=None, max_results=100):
     if max_results > 100: max_results = 100
