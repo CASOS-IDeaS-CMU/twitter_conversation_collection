@@ -61,7 +61,7 @@ TW.get_replies_from_tweet_gzip_file('infilename.json.gz', './outdir')
 ```
 
 #### 4. Recent search, last 7 days.
-The variable `max_results` is total number of tweets a user wants to query (increments of 100). The twitter default is 10 and maximum of 100 tweets per json response. This method will continue making API calls until max_results is reached. 
+The variable `max_results` is total number of tweets a user wants to query. The twitter default is 10 and maximum of 100 tweets per json response. For max_results > 100, this method will continue making API calls until max_results is reached. 
 Collected data is stored in the user-specified outdir, in a folder named with the date and time of the function call. Files ending in 'all_data' are the combined data from all of the indvidual API calls.
 The recent_search endpoint is useful for collecting recent events. The query parameter is a string with at least one hashtag. A string comprised of multiple hashtags results in tweets where both queries are present. 
 Query Limit: No tweet limit beyond your Twitter Research Development tweet limits/month.
