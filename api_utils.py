@@ -134,7 +134,7 @@ def create_search_url(search_query, params=None, next_token=None, max_results=10
     return url
 
 def create_all_search_url(search_query, start_time=None, end_time=None, params=None, next_token=None, max_results=100):
-    if max_results > 500: max_results = 500
+    if max_results > 100: max_results = 100
     if max_results < 10: max_results = 10
     query = urllib.parse.quote(search_query)
     url = f"https://api.twitter.com/2/tweets/search/all?query={query}&max_results={max_results}"
