@@ -32,7 +32,7 @@ def attach_params(url, params):
 def create_convo_url(cid, params=None, next_token=None, max_results=100):
     if(max_results > 100): max_results = 100
     if(max_results < 10): max_results = 10
-    url = f"https://api.twitter.com/2/tweets/search/recent?query=conversation_id:{cid}&max_results={max_results}"
+    url = f"https://api.twitter.com/2/tweets/search/all?query=conversation_id:{cid}&max_results={max_results}"
     if next_token:
         url += f"&next_token={next_token}"
     if params:

@@ -307,6 +307,8 @@ class TwitterCollection():
         total_tweets = 0
         merged_response_json = {}
         query_truncate = query[:10]
+        error_convos = []
+
 
         while keepCollecting:
             if search_type == 'recent_search':
@@ -324,12 +326,12 @@ class TwitterCollection():
                 error_exists, error_message = api_utils.check_for_error(response_json)
                 
                 if error_exists[0] == response_status_code.INVALID_REQUEST:
-                    error_convos.append(f'{convo}, {error_exists}')
+                    #error_convos.append(f'{convo}, {error_exists}')
                     keepCollecting = False 
 
                 else:
-                    if(error_exists[0] == response_status_code.NOT_FOUND_ERROR):
-                        error_convos.append(f'{convo}, {error_exists}')
+                    #if(error_exists[0] == response_status_code.NOT_FOUND_ERROR):
+                        #error_convos.append(f'{convo}, {error_exists}')
 
                     if('data' in response_json):
                         merged_response_json = self.__merge_response_jsons(response_json, merged_response_json)
